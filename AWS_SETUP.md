@@ -135,7 +135,36 @@ npx cdk synth -c environment=dev
 # Expected: Should complete without errors and display stack names
 ```
 
-## 💰 Step 5: (Optional) Set Up Cost Monitoring
+## � Step 5: CDK Bootstrap (Required Before First Deployment)
+
+CDK Bootstrap creates the necessary AWS infrastructure (S3 buckets, IAM roles, CloudFormation stack) that CDK uses for deployments. This needs to be done **once per AWS account per region**.
+
+```bash
+# Bootstrap the default region
+npx cdk bootstrap
+
+# Or bootstrap a specific region
+npx cdk bootstrap --region us-east-1
+```
+
+Expected output:
+```
+ ⏳  Bootstrapping environment aws://123456789012/us-east-1...
+Trusted accounts for deployment: (none)
+Trusted accounts for lookup: (none)
+Using default execution policy of 'arn:aws:iam::aws:policy/AdministratorAccess'. Pass '--cloudformation-execution-policies' to customize.
+CDKToolkit: creating CloudFormation changeset...
+ ✅  Environment aws://123456789012/us-east-1 bootstrapped.
+```
+
+This creates:
+- **S3 Bucket**: Stores CloudFormation templates and assets
+- **IAM Roles**: Provides permissions for CDK deployments
+- **CloudFormation Stack**: Named `CDKToolkit` - manages bootstrap resources
+
+**Note**: You only need to bootstrap once per account/region combination. If you see the error `SSM parameter /cdk-bootstrap/hnb659fds/version not found`, it means bootstrap hasn't been run yet for that region.
+
+## 💰 Step 6: (Optional) Set Up Cost Monitoring
 
 To avoid unexpected charges, set up budget alerts:
 
@@ -145,7 +174,7 @@ To avoid unexpected charges, set up budget alerts:
 4. Set monthly limit (e.g., $100)
 5. Add email notification when threshold is reached
 
-## 📊 Step 6: Check Service Quotas
+## 📊 Step 7: Check Service Quotas
 
 Ensure your account has sufficient quota for resources:
 
@@ -183,17 +212,85 @@ If you hit quotas, request an increase through the AWS Console.
 - Delete the cluster when not testing (`cdk destroy`)
 - Use smaller instance types
 
-## ✅ Ready to Deploy!
+## ✅ Step 8: Deploy Network Stack
 
-Once you've completed the above steps, you're ready to deploy:
+After bootstrapping, deploy the network infrastructure (VPC, subnets, NAT gateways):
 
 ```bash
-# Deploy to dev environment
-npx cdk deploy --all
-
-# Or with explicit environment
-ENVIRONMENT=dev npx cdk deploy --all
+# Deploy the Network stack
+npx cdk deploy EksShowcase-dev-Network -c environment=dev --require-approval=never
 ```
+
+### Deployment Process
+
+The deployment will display IAM and security group changes for your approval, then proceed to create the CloudFormation stack:
+
+```
+✨  Synthesis time: 4.31s
+
+EksShowcase-dev-Network: start: Building EksShowcase-dev-Network Template
+EksShowcase-dev-Network: success: Built EksShowcase-dev-Network Template
+EksShowcase-dev-Network: start: Publishing EksShowcase-dev-Network Template (809128755595-us-east-1-9ebf54d8)
+EksShowcase-dev-Network: success: Published EksShowcase-dev-Network Template (809128755595-us-east-1-9ebf54d8)
+
+IAM Statement Changes
+┌───┬────────────────────────┬────────┬─────────────────────────┬─────────────────────────────────────┬───────────┐
+│ + │ ${VpcFlowLogGroup.Arn} │ Allow  │ logs:CreateLogStream    │ AWS:${VpcFlowLogRole}               │           │
+│   │                        │        │ logs:DescribeLogStreams │                                     │           │
+│   │                        │        │ logs:PutLogEvents       │                                     │           │
+├───┼────────────────────────┼────────┼─────────────────────────┼─────────────────────────────────────┼───────────┤
+│ + │ ${VpcFlowLogRole.Arn}  │ Allow  │ sts:AssumeRole          │ Service:vpc-flow-logs.amazonaws.com │           │
+└───┴────────────────────────┴────────┴─────────────────────────┴─────────────────────────────────────┴───────────┘
+
+Security Group Changes
+┌───┬──────────────────────────┬─────┬────────────┬──────────────────┐
+│   │ Group                    │ Dir │ Protocol   │ Peer             │
+├───┼──────────────────────────┼─────┼────────────┼──────────────────┤
+│ + │ ${VpcEndpointSG.GroupId} │ In  │ TCP 443    │ ${Vpc.CidrBlock} │
+│ + │ ${VpcEndpointSG.GroupId} │ Out │ Everything │ Everyone (IPv4)  │
+└───┴──────────────────────────┴─────┴────────────┴──────────────────┘
+```
+
+### Sample Deployment in Action
+
+![CDK Network Stack Deployment](docs/images/network-stack-deployment.png)
+
+The screenshot shows the actual deployment progress with:
+- IAM and Security Group changes summary
+- CREATE_IN_PROGRESS status for VPC endpoints, NAT Gateway, and other resources
+- Real-time resource creation tracking
+
+### Resources Created
+
+This stack creates:
+- **VPC** with CIDR block based on environment config
+- **Public Subnets** in multiple AZs for NAT gateways and load balancers
+- **Private Subnets** in multiple AZs for EKS nodes
+- **NAT Gateways** for outbound internet access from private subnets
+- **VPC Flow Logs** for network monitoring
+- **VPC Endpoints** for AWS service access without internet transit
+
+**Next Steps**: After the Network stack is deployed, you can proceed to deploy the remaining stacks (EKS, Storage, GitOps).
+
+## ✅ Ready to Deploy!
+
+Once you've completed the above steps (including CDK Bootstrap and Network Stack), you're ready to deploy the remaining infrastructure:
+
+```bash
+# Deploy all remaining stacks to dev environment
+npx cdk deploy --all -c environment=dev --require-approval=never
+
+# Or deploy individual stacks in order:
+npx cdk deploy EksShowcase-dev-EKS -c environment=dev --require-approval=never
+npx cdk deploy EksShowcase-dev-Storage -c environment=dev --require-approval=never
+npx cdk deploy EksShowcase-dev-GitOps -c environment=dev --require-approval=never
+```
+
+**Stack deployment order**:
+1. ✅ Network (already deployed in Step 8)
+2. EKS Cluster (depends on Network)
+3. Storage (S3 buckets - independent)
+4. GitOps (ArgoCD - depends on EKS)
 
 ## 🧹 Cleanup
 
