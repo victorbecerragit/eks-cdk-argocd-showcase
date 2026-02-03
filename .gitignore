@@ -1,0 +1,12 @@
+
+*.js
+!jest.config.js
+!src/lib/lambda/**/*.js
+*.d.ts
+node_modules
+dist
+cdk.out
+.DS_Store
+.idea
+.vscode
+*.swp
