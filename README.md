@@ -94,7 +94,7 @@ If everything is configured correctly, you should see:
 *   ✅ Different resource counts/properties reflecting the environment differences (e.g., Prod showing 3 NAT Gateways vs 1 in Dev).
 
 ## � Next Steps: Setup AWS Credentials
-
+**New to AWS?** Start here: [AWS Account Setup Guide](AWS_SETUP.md) - Complete instructions for setting up a new AWS account, IAM users, and credentials.
 Before deploying, you need to authenticate with AWS. Choose one method:
 
 ### Option 1: AWS CLI Profile (Recommended)

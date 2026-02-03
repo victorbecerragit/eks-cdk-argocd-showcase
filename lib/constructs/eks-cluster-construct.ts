@@ -63,10 +63,18 @@ export class EksClusterConstruct extends Construct {
             // Access Management
             mastersRole: this.adminRole,
             
-            // Use the KubectlLayer from aws-cdk-lib (built-in)
+            // KubectlLayer: Required for EKS cluster to manage kubectl
+            // For production, use the official @aws-cdk/lambda-layer-kubectl package
             kubectlLayer: new lambda.LayerVersion(this, 'KubectlLayer', {
-                code: lambda.Code.fromAsset(`${__dirname}/../../aws-lambda-layer-kubectl-v31`),
-                compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+                code: lambda.Code.fromAsset(`${__dirname}/../../assets/kubectl-layer`),
+                compatibleRuntimes: [
+                    lambda.Runtime.PYTHON_3_9,
+                    lambda.Runtime.PYTHON_3_10,
+                    lambda.Runtime.PYTHON_3_11,
+                    lambda.Runtime.PYTHON_3_12,
+                    lambda.Runtime.PYTHON_3_13,
+                ],
+                description: 'Kubectl layer for EKS cluster management',
             }),
         });
 
