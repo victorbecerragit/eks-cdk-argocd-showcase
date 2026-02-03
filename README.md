@@ -93,7 +93,35 @@ If everything is configured correctly, you should see:
 *   ✅ Console output confirming validation (e.g., `✓ Configuration validation passed for environment: prod`).
 *   ✅ Different resource counts/properties reflecting the environment differences (e.g., Prod showing 3 NAT Gateways vs 1 in Dev).
 
-## 🚀 Deployment
+## � Next Steps: Setup AWS Credentials
+
+Before deploying, you need to authenticate with AWS. Choose one method:
+
+### Option 1: AWS CLI Profile (Recommended)
+```bash
+# Configure your AWS credentials
+aws configure --profile my-profile
+
+# Set the profile for CDK
+export AWS_PROFILE=my-profile
+
+# Verify credentials work
+aws sts get-caller-identity
+```
+
+### Option 2: Environment Variables
+```bash
+# Set account and region
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+export CDK_DEFAULT_REGION=us-east-1
+
+# Verify
+aws sts get-caller-identity
+```
+
+Once credentials are set, you're ready to deploy.
+
+## �🚀 Deployment
 
 To deploy the infrastructure to your AWS account:
 

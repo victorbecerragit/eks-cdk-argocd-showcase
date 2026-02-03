@@ -2,9 +2,9 @@ import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { EKSConfig } from '../config/environment-config';
-import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
 
 export interface EksClusterConstructProps {
     vpc: ec2.IVpc;
@@ -63,8 +63,11 @@ export class EksClusterConstruct extends Construct {
             // Access Management
             mastersRole: this.adminRole,
             
-            // Modern kubectl layer (Required for newer K8s versions)
-            kubectlLayer: new KubectlV31Layer(this, 'KubectlLayer'),
+            // Use the KubectlLayer from aws-cdk-lib (built-in)
+            kubectlLayer: new lambda.LayerVersion(this, 'KubectlLayer', {
+                code: lambda.Code.fromAsset(`${__dirname}/../../aws-lambda-layer-kubectl-v31`),
+                compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+            }),
         });
 
         // 3. Add Managed Node Group
@@ -93,11 +96,6 @@ export class EksClusterConstruct extends Construct {
             labels: {
                 role: 'worker',
                 lifecycle: config.capacityType || 'ON_DEMAND',
-            },
-            
-            // Security
-            remoteAccess: {
-                sshKeyName: undefined, // Disable SSH access for security
             },
         });
 
