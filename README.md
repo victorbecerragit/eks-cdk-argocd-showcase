@@ -152,3 +152,51 @@ ENVIRONMENT=prod npx cdk destroy --all
 
 ---
 **Note**: This is a showcase repository. Please review all security groups and IAM permissions before deploying to a critical production environment.
+
+## 🔔 Troubleshooting
+
+### CDK CLI Version Mismatch Warning
+
+You may see a warning like:
+```
+Cloud assembly schema version mismatch: Maximum schema version supported is 38.x.x, but found 48.0.0
+```
+
+**What it means**: Your CDK CLI version is older than the aws-cdk-lib version in the project.
+
+**Impact**: ✅ **None** - Your `cdk synth` and deployments will work fine. This is just a version alignment warning.
+
+**To fix it** (optional):
+```bash
+# Update the CDK CLI to the latest version
+npm install -g aws-cdk@latest
+
+# Verify
+cdk --version
+```
+
+After updating, re-run your commands and the warning will disappear.
+
+### CDK Notices (32775, 34892)
+
+You may see notices like:
+```
+32775   (cli): CLI versions and CDK library versions have diverged
+34892   CDK CLI will collect telemetry data on command usage starting at version 2.1100.0
+```
+
+**What they mean**: These are informational notices from AWS about upcoming changes and versioning updates.
+
+**Impact**: ✅ **None** - These don't affect your deployment. They're just FYI messages.
+
+**To suppress them**:
+```bash
+# Acknowledge a specific notice by ID
+cdk acknowledge 32775
+cdk acknowledge 34892
+
+# Or suppress all notices
+cdk acknowledge 32775 34892
+```
+
+The notices won't appear again once acknowledged.
