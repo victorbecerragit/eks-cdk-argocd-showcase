@@ -1,37 +1,124 @@
-import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
 import { EKSConfig } from '../config/environment-config';
+import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
 
 export interface EksClusterConstructProps {
     vpc: ec2.IVpc;
     config: EKSConfig;
 }
 
+/**
+ * EKS Cluster Construct
+ * 
+ * Creates a production-ready EKS cluster with:
+ * - Managed Node Groups (Auto-scaling)
+ * - Control Plane Logging (CloudWatch)
+ * - OIDC Provider (for IRSA)
+ * - Secure communication channels
+ */
 export class EksClusterConstruct extends Construct {
     public readonly cluster: eks.Cluster;
+    public readonly adminRole: iam.Role;
 
     constructor(scope: Construct, id: string, props: EksClusterConstructProps) {
         super(scope, id);
 
-        // TODO: Implement EKS cluster creation logic
-        // 1. Create EKS Cluster
-        // 2. Add Managed Node Groups
-        // 3. Configure Output/Exports
+        const { vpc, config } = props;
 
-        // Placeholder for cluster creation
-        /*
-        this.cluster = new eks.Cluster(this, 'EksCluster', {
-            version: eks.KubernetesVersion.of(props.config.version),
-            vpc: props.vpc,
-            defaultCapacity: 0,
-            // ... other config
+        // 1. Create Cluster Admin Role
+        // This role will be mapped to system:masters
+        this.adminRole = new iam.Role(this, 'ClusterAdminRole', {
+            assumedBy: new iam.AccountRootPrincipal(),
+            roleName: `${config.clusterName}-admin-role`,
+            description: 'EKS Cluster Administrator Role',
         });
-        */
 
-        // Temporary placeholder to satisfy typescript until implementation
-        // Remove this when implementing real cluster
-        this.cluster = {} as eks.Cluster;
+        // 2. Create EKS Cluster
+        this.cluster = new eks.Cluster(this, 'Cluster', {
+            clusterName: config.clusterName,
+            vpc: vpc,
+            vpcSubnets: [
+                // Control plane ENIs placed in private subnets
+                { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
+            ],
+            defaultCapacity: 0, // We will use Managed Node Groups instead
+            version: eks.KubernetesVersion.of(config.version),
+            
+            // Security settings
+            endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE, // Best practice for GitOps + Dev access
+            
+            // Logging
+            clusterLogging: config.enableClusterLogging ? [
+                eks.ClusterLoggingTypes.API,
+                eks.ClusterLoggingTypes.AUDIT,
+                eks.ClusterLoggingTypes.AUTHENTICATOR,
+                eks.ClusterLoggingTypes.CONTROLLER_MANAGER,
+                eks.ClusterLoggingTypes.SCHEDULER,
+            ] : [],
+
+            // Access Management
+            mastersRole: this.adminRole,
+            
+            // Modern kubectl layer (Required for newer K8s versions)
+            kubectlLayer: new KubectlV31Layer(this, 'KubectlLayer'),
+        });
+
+        // 3. Add Managed Node Group
+        // Creates the worker nodes for the cluster
+        this.cluster.addNodegroupCapacity('DefaultNodeGroup', {
+            nodegroupName: `${config.clusterName}-default-ng`,
+            
+            // Scaling configuration
+            minSize: config.minNodes,
+            maxSize: config.maxNodes,
+            desiredSize: config.desiredNodes,
+            
+            // Compute configuration
+            instanceTypes: config.instanceTypes.map(t => new ec2.InstanceType(t)),
+            capacityType: config.capacityType === 'SPOT' 
+                ? eks.CapacityType.SPOT 
+                : eks.CapacityType.ON_DEMAND,
+            
+            // Networking: Place nodes in private subnets
+            subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+            
+            // AMI Type (AL2_x86_64 is standard, use AL2023 or BOTTLEROCKET for newer)
+            amiType: eks.NodegroupAmiType.AL2_X86_64,
+            
+            // Labels and Taints for scheduling
+            labels: {
+                role: 'worker',
+                lifecycle: config.capacityType || 'ON_DEMAND',
+            },
+            
+            // Security
+            remoteAccess: {
+                sshKeyName: undefined, // Disable SSH access for security
+            },
+        });
+
+        // 4. Output Cluster Config
+        new cdk.CfnOutput(this, 'ClusterName', {
+            value: this.cluster.clusterName,
+            description: 'EKS Cluster Name',
+            exportName: `${config.clusterName}-ClusterName`,
+        });
+
+        new cdk.CfnOutput(this, 'ClusterEndpoint', {
+            value: this.cluster.clusterEndpoint,
+            description: 'EKS Cluster Endpoint',
+            exportName: `${config.clusterName}-ClusterEndpoint`,
+        });
+        
+        new cdk.CfnOutput(this, 'ClusterAdminRoleArn', {
+            value: this.adminRole.roleArn,
+            description: 'ARN of the EKS Cluster Admin Role',
+            exportName: `${config.clusterName}-AdminRoleArn`,
+        });
     }
 }
+
