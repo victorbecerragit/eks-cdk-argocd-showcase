@@ -35,6 +35,9 @@ This project implements a complete Kubernetes platform on AWS, following best pr
 │   ├── constructs/      # Reusable L3 CDK constructs (EKS, S3, ALB, ArgoCD)
 │   └── stacks/          # CloudFormation Stacks (Network, Storage, EKS, GitOps)
 ├── gitops/              # ArgoCD manifests & Helm charts
+├── scripts/             # Helper scripts for template generation & commands
+│   ├── generate-templates.sh    # Auto-generates CloudFormation templates
+│   └── quick-reference.sh       # Quick reference for common CDK commands
 └── test/                # Unit tests
 ```
 
@@ -72,8 +75,22 @@ Check for any TypeScript type errors:
 npm run build -- --noEmit
 ```
 
-### 3. Verify Environment Selection
-Ensure that the configuration loading works for all target environments:
+### 3. Automated Template Generation
+Use the provided script to automatically generate CloudFormation templates for all environments:
+
+```bash
+# Run the template generation script
+./scripts/generate-templates.sh
+```
+
+This script will:
+- Install dependencies
+- Compile TypeScript
+- Generate CloudFormation templates for all 3 environments (dev, staging, prod)
+- Validate configurations
+- Summarize generated artifacts
+
+Alternatively, manually verify each environment:
 
 ```bash
 # 1. Verify Dev Environment (default)
@@ -92,6 +109,68 @@ If everything is configured correctly, you should see:
 *   ✅ CloudFormation templates generated for all stacks (`Network`, `EKS`, `Storage`, `GitOps`).
 *   ✅ Console output confirming validation (e.g., `✓ Configuration validation passed for environment: prod`).
 *   ✅ Different resource counts/properties reflecting the environment differences (e.g., Prod showing 3 NAT Gateways vs 1 in Dev).
+
+## 📋 CloudFormation Templates Overview
+
+The CDK synthesizes 4 main CloudFormation stacks per environment:
+
+### Stack Breakdown
+
+| Stack | Template | Size | Purpose |
+|-------|----------|------|---------|
+| **Network** | `EksShowcase-{env}-Network.template.json` | 34 KB | VPC foundation with multi-AZ subnets, VPC endpoints, flow logs |
+| **EKS** | `EksShowcase-{env}-EKS.template.json` | 40 KB | Kubernetes cluster with managed node groups, IRSA, ALB controller, ArgoCD |
+| **Storage** | `EksShowcase-{env}-Storage.template.json` | 7 KB | Secure S3 bucket with encryption, versioning, lifecycle policies |
+| **GitOps** | `EksShowcase-{env}-GitOps.template.json` | 1 KB | GitOps orchestration layer (ArgoCD deployed via EKS stack) |
+
+### Key Resources by Stack
+
+**Network Stack Resources:**
+- VPC (10.0.0.0/16)
+- Public Subnets (1x /24 per AZ)
+- Private Subnets (1x /22 per AZ)
+- Isolated Subnets (1x /24 per AZ)
+- NAT Gateway(s) - Environment-dependent (1 for dev, 2 for staging, 3 for prod)
+- VPC Endpoints:
+  - Gateway: S3, DynamoDB
+  - Interface: ECR API, ECR DKR, CloudWatch, STS, EC2, SSM, SSM Messages
+- VPC Flow Logs → CloudWatch Logs
+
+**EKS Stack Resources:**
+- EKS Cluster (Kubernetes v1.31)
+- Managed Node Group (auto-scaling, mixed capacity types)
+- Cluster Admin IAM Role
+- OpenID Connect Provider (for IRSA)
+- AWS Load Balancer Controller (with IRSA)
+- ArgoCD Helm Release (v7.7.10)
+- App of Apps Bootstrap Manifest
+- Nested Templates:
+  - Cluster Resource Provider (for EKS cluster management)
+  - Kubectl Provider (for Kubernetes manifest deployment)
+
+**Storage Stack Resources:**
+- S3 Bucket with:
+  - AES-256 server-side encryption
+  - Versioning enabled
+  - Lifecycle policies (transition to Infrequent Access)
+  - Block all public access
+  - Enforce SSL/TLS connections
+  - Auto-delete cleanup (CDK custom resource)
+
+**GitOps Stack Resources:**
+- Minimal orchestration layer (resources primarily in EKS stack)
+- ArgoCD bootstrap handled via EKS stack Helm charts
+
+### Resource Counts by Environment
+
+| Resource | Dev | Staging | Prod |
+|----------|-----|---------|------|
+| NAT Gateways | 1 | 2 | 3 |
+| Node Group Min/Max | 2-6 | 3-10 | 6-20 |
+| Instance Type | t3.medium | t3.medium/large | t3.large/xlarge |
+| Capacity Type | SPOT/ON_DEMAND | ON_DEMAND | ON_DEMAND |
+| S3 Lifecycle Days | 90 | 180 | 365 |
+| Termination Protection | No | No | Yes |
 
 ## � Next Steps: Setup AWS Credentials
 **New to AWS?** Start here: [AWS Account Setup Guide](AWS_SETUP.md) - Complete instructions for setting up a new AWS account, IAM users, and credentials.
