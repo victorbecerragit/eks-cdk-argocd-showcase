@@ -1,0 +1,275 @@
+---
+# Prometheus ServiceMonitor - Core Infrastructure
+# Monitors Kubernetes system components and metrics
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-apiserver
+  namespace: observability
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      component: kube-apiserver
+  endpoints:
+  - port: https
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: kubernetes
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 30s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-scheduler
+  namespace: observability
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      component: kube-scheduler
+  endpoints:
+  - port: https
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: kube-scheduler
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 30s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-controller-manager
+  namespace: observability
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      component: kube-controller-manager
+  endpoints:
+  - port: https
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: kube-controller-manager
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 30s
+
+---
+# ServiceMonitor for kubelet metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubelet
+  namespace: observability
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kubelet
+  endpoints:
+  - port: https-metrics
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_node_name]
+      targetLabel: node
+    interval: 30s
+
+---
+# ServiceMonitor for Tenant Alpha application metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tenant-alpha-apps
+  namespace: tenant-alpha
+  labels:
+    app: prometheus
+    tenant: alpha
+spec:
+  selector:
+    matchLabels:
+      prometheus: "true"
+  namespaceSelector:
+    matchNames:
+    - tenant-alpha
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+  - port: prometheus-metrics
+    interval: 30s
+    path: /metrics
+
+---
+# ServiceMonitor for Tenant Beta application metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tenant-beta-apps
+  namespace: tenant-beta
+  labels:
+    app: prometheus
+    tenant: beta
+spec:
+  selector:
+    matchLabels:
+      prometheus: "true"
+  namespaceSelector:
+    matchNames:
+    - tenant-beta
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+  - port: prometheus-metrics
+    interval: 30s
+    path: /metrics
+
+---
+# ServiceMonitor for Ingress Nginx Controller
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nginx-ingress
+  namespace: ingress-nginx
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+  endpoints:
+  - port: metrics
+    interval: 30s
+
+---
+# ServiceMonitor for AWS Load Balancer Controller
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aws-load-balancer-controller
+  namespace: kube-system
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aws-load-balancer-controller
+  endpoints:
+  - port: metrics
+    interval: 30s
+
+---
+# PrometheusRule - Alert rules for infrastructure
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-rules
+  namespace: observability
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: kubernetes.rules
+    interval: 30s
+    rules:
+    # Node CPU
+    - alert: NodeCPUUsageHigh
+      expr: (100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node CPU usage is high (instance {{ $labels.instance }})"
+        description: "Node {{ $labels.instance }} CPU usage is {{ $value }}%"
+    
+    # Node Memory
+    - alert: NodeMemoryUsageHigh
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node memory usage is high (instance {{ $labels.instance }})"
+        description: "Node {{ $labels.instance }} memory usage is {{ $value }}%"
+    
+    # Pod Crashes
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total[15m]) > 0.1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod is crash looping (pod {{ $labels.pod }})"
+        description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is restarting frequently"
+    
+    # Disk Space
+    - alert: DiskSpaceUsageHigh
+      expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs"} / node_filesystem_size_bytes)) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Disk usage is high (instance {{ $labels.instance }})"
+        description: "Disk {{ $labels.device }} on instance {{ $labels.instance }} is {{ $value }}% full"
+    
+    # PVC usage
+    - alert: PersistentVolumeUsageHigh
+      expr: (1 - (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes)) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PersistentVolume usage is high (pvc {{ $labels.persistentvolumeclaim }})"
+        description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value }}% full"
+
+---
+# PrometheusRule - Alert rules for tenants
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tenant-rules
+  namespace: observability
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: tenant.rules
+    interval: 30s
+    rules:
+    - alert: TenantResourceQuotaExceeded
+      expr: kube_resourcequota_used > 0.9 * kube_resourcequota_hard
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Tenant resource quota is nearly exceeded (quota {{ $labels.resourcequota }})"
+        description: "Namespace {{ $labels.namespace }} has used {{ $value | humanizePercentage }} of quota {{ $labels.resourcequota }}"
+    
+    - alert: TenantPodUnreachable
+      expr: kube_pod_status_phase{phase=~"Unknown|Failed"} == 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod is unreachable (pod {{ $labels.pod }})"
+        description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is in {{ $labels.phase }} state"

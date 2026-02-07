@@ -1,0 +1,311 @@
+---
+# Multi-Tenant RBAC Configuration
+# Implements least privilege access control for tenants
+
+# TENANT ALPHA - Admin Group
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-alpha-admin
+  namespace: tenant-alpha
+  labels:
+    tenant: alpha
+    role: admin
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tenant-alpha-admin
+  namespace: tenant-alpha
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["batch"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-alpha-admin
+  namespace: tenant-alpha
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tenant-alpha-admin
+subjects:
+- kind: ServiceAccount
+  name: tenant-alpha-admin
+  namespace: tenant-alpha
+# In production, integrate with IAM/AD
+# - kind: Group
+#   name: "alpha-developers@company.com"
+# - kind: Group
+#   name: "alpha-admins@company.com"
+
+---
+# TENANT ALPHA - Developer Role
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-alpha-developer
+  namespace: tenant-alpha
+  labels:
+    tenant: alpha
+    role: developer
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tenant-alpha-developer
+  namespace: tenant-alpha
+rules:
+# Deploy and manage workloads
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods", "pods/logs", "pods/status"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+# View metrics
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+# Cannot delete or escalate privileges
+- apiGroups: [""]
+  resources: ["resourcequotas", "limitranges"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-alpha-developer
+  namespace: tenant-alpha
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tenant-alpha-developer
+subjects:
+- kind: ServiceAccount
+  name: tenant-alpha-developer
+  namespace: tenant-alpha
+
+---
+# TENANT BETA - Admin Group
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-beta-admin
+  namespace: tenant-beta
+  labels:
+    tenant: beta
+    role: admin
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tenant-beta-admin
+  namespace: tenant-beta
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["batch"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-beta-admin
+  namespace: tenant-beta
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tenant-beta-admin
+subjects:
+- kind: ServiceAccount
+  name: tenant-beta-admin
+  namespace: tenant-beta
+
+---
+# TENANT BETA - Developer Role
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-beta-developer
+  namespace: tenant-beta
+  labels:
+    tenant: beta
+    role: developer
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tenant-beta-developer
+  namespace: tenant-beta
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods", "pods/logs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-beta-developer
+  namespace: tenant-beta
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tenant-beta-developer
+subjects:
+- kind: ServiceAccount
+  name: tenant-beta-developer
+  namespace: tenant-beta
+
+---
+# OBSERVABILITY - Reader roles for Prometheus scraping
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: observability
+  labels:
+    app: prometheus
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-scraper
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/proxy
+  - services
+  - endpoints
+  - pods
+  - events
+  - namespaces
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources:
+  - statefulsets
+  - deployments
+  - daemonsets
+  - replicasets
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["autoscaling"]
+  resources:
+  - horizontalpodautoscalers
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["policy"]
+  resources:
+  - poddisruptionbudgets
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["storage.k8s.io"]
+  resources:
+  - storageclasses
+  - volumeattachments
+  verbs: ["get", "list", "watch"]
+- nonResourceURLs:
+  - /metrics
+  - /metrics/cadvisor
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-scraper
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-scraper
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: observability
+
+---
+# PLATFORM TOOLS - Admin ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: platform-admin
+  namespace: platform-tools
+  labels:
+    platform: core
+    role: admin
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-admin
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: platform-admin
+subjects:
+- kind: ServiceAccount
+  name: platform-admin
+  namespace: platform-tools

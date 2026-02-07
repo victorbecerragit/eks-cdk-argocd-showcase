@@ -2,6 +2,47 @@
 
 A production-ready Infrastructure as Code (IaC) showcase demonstrating how to build, manage, and scale Amazon EKS clusters using AWS CDK and GitOps principles with ArgoCD.
 
+---
+
+## 📖 **Quick Start - Read This First!**
+
+**New to this project?** → Start with [START_HERE.md](START_HERE.md) ⭐
+- Navigation hub for all documentation
+- Guides for different roles (developers, architects, DevOps)
+- Links to comprehensive guides below
+- ~5 minutes to get oriented
+
+---
+
+## 📚 **Documentation Guides** (Pick Your Path)
+
+### 🎯 I'm a **Project Lead/Decision Maker**
+- **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** (10 min) - Problem analysis & solution overview
+- **[STRUCTURE_COMPARISON.md](STRUCTURE_COMPARISON.md)** (20 min) - Current vs. proposed structure analysis
+- **Use for**: Understanding the project organization and making architectural decisions
+
+### 🏗️ I'm an **Architect/Technical Lead**
+- **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** (15 min) - Detailed structure proposal
+- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (15 min) - System topology & diagrams
+- **Use for**: Understanding system design and technical details
+
+### 👨‍💻 I'm a **Developer** (Adding Code)
+- **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** (10 min) - **Bookmark this!** Quick decision guide
+- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (15 min) - Understand the system
+- **Use for**: Daily reference on where to put files and how components work
+
+### 🔧 I'm a **DevOps/Platform Engineer**
+- **[REORGANIZATION_GUIDE.md](REORGANIZATION_GUIDE.md)** (40 min) - Step-by-step implementation guide
+- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (15 min) - System architecture reference
+- **Use for**: Implementing changes and deployment automation
+
+### 🆕 I'm a **New Team Member**
+1. Read **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** - Understand the system
+2. Read **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** - Learn where things go
+3. Bookmark **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** - Reference for daily work
+
+---
+
 ## 🚀 Overview
 
 This project implements a complete Kubernetes platform on AWS, following best practices for security, scalability, and observability. It is designed to demonstrate a "Battery-Included" EKS setup that is ready for application deployment via GitOps.
@@ -28,18 +69,43 @@ This project implements a complete Kubernetes platform on AWS, following best pr
 
 ## 🛠 Project Structure
 
+### Current Structure (See [REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md) for detailed documentation)
+
 ```
-├── bin/                 # CDK App entry point & Stack orchestration
+├── bin/                     # CDK App entry point & Stack orchestration
 ├── lib/
-│   ├── config/          # Environment configurations (dev/stage/prod) & Validation
-│   ├── constructs/      # Reusable L3 CDK constructs (EKS, S3, ALB, ArgoCD)
-│   └── stacks/          # CloudFormation Stacks (Network, Storage, EKS, GitOps)
-├── gitops/              # ArgoCD manifests & Helm charts
-├── scripts/             # Helper scripts for template generation & commands
-│   ├── generate-templates.sh    # Auto-generates CloudFormation templates
-│   └── quick-reference.sh       # Quick reference for common CDK commands
-└── test/                # Unit tests
+│   ├── config/              # Environment configurations (dev/stage/prod)
+│   ├── constructs/          # Reusable L3 CDK constructs
+│   └── stacks/              # CloudFormation Stacks
+├── infrastructure/          # Kubernetes multi-tenancy, security & observability configs
+├── gitops/                  # ArgoCD manifests, Helm charts & applications
+├── scripts/                 # Helper scripts for templates & commands
+├── test/                    # Unit tests
+└── docs/                    # Project documentation & architecture guides
 ```
+
+### Recommended Structure (For better clarity)
+
+See **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** for migration guide:
+
+```
+├── iac/                     # AWS Infrastructure (CDK) - All AWS provisioning code
+├── platform/                # Kubernetes Configuration - All cluster configs
+│   ├── tenants/             # Multi-tenant isolation & quotas
+│   ├── security/            # Security policies & controls
+│   ├── observability/       # Monitoring & logging stack
+│   └── gitops/              # ArgoCD orchestration
+├── helm-charts/             # Reusable Helm charts
+├── docs/                    # All documentation
+└── scripts/                 # Helper scripts
+```
+
+**Benefits of recommended structure:**
+- ✅ Clear separation: `/iac` for AWS, `/platform` for K8s
+- ✅ Single source of truth for each component type
+- ✅ Faster developer onboarding
+- ✅ Easier to find and maintain files
+- ✅ Simplified CI/CD pipeline targeting
 
 ## ⚙️ Configuration
 
@@ -49,11 +115,11 @@ Configurations are centrally managed in `lib/config/`. The system uses strict ty
 *   **Staging**: HA testing (Multi-AZ, mixed instances).
 *   **Prod**: High Availability, Security hardening, Compliance (termination protection, full logging).
 
-See [lib/config/README.md](lib/config/README.md) for detailed configuration documentation.
+See [lib/config/README.md](lib/config/README.md) for detailed configuration documentation and [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) for system architecture diagrams.
 
 ## 🧪 Testing & Validation
 
-Follow these steps to validate your configuration updates and ensure the infrastructure code is sound.
+Follow these steps to validate your configuration and ensure the infrastructure code is sound.
 
 ### 1. Prerequisites
 ```bash
@@ -75,40 +141,19 @@ Check for any TypeScript type errors:
 npm run build -- --noEmit
 ```
 
-### 3. Automated Template Generation
-Use the provided script to automatically generate CloudFormation templates for all environments:
-
+### 3. Validate Each Environment
 ```bash
-# Run the template generation script
-./scripts/generate-templates.sh
-```
-
-This script will:
-- Install dependencies
-- Compile TypeScript
-- Generate CloudFormation templates for all 3 environments (dev, staging, prod)
-- Validate configurations
-- Summarize generated artifacts
-
-Alternatively, manually verify each environment:
-
-```bash
-# 1. Verify Dev Environment (default)
+# Verify Dev Environment
 npx cdk synth -c environment=dev
 
-# 2. Verify Staging Environment
+# Verify Staging Environment
 npx cdk synth -c environment=staging
 
-# 3. Verify Production Environment
+# Verify Production Environment
 npx cdk synth -c environment=prod
 ```
 
-### ✅ Expected Output
-If everything is configured correctly, you should see:
-*   ✅ No TypeScript compilation errors.
-*   ✅ CloudFormation templates generated for all stacks (`Network`, `EKS`, `Storage`, `GitOps`).
-*   ✅ Console output confirming validation (e.g., `✓ Configuration validation passed for environment: prod`).
-*   ✅ Different resource counts/properties reflecting the environment differences (e.g., Prod showing 3 NAT Gateways vs 1 in Dev).
+See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for what each stack creates.
 
 ## 📋 CloudFormation Templates Overview
 
@@ -172,11 +217,26 @@ The CDK synthesizes 4 main CloudFormation stacks per environment:
 | S3 Lifecycle Days | 90 | 180 | 365 |
 | Termination Protection | No | No | Yes |
 
-## � Next Steps: Setup AWS Credentials
-**New to AWS?** Start here: [AWS Account Setup Guide](AWS_SETUP.md) - Complete instructions for setting up a new AWS account, IAM users, and credentials.
-Before deploying, you need to authenticate with AWS. Choose one method:
+## ✅ Prerequisites & Setup
 
-### Option 1: AWS CLI Profile (Recommended)
+### New to AWS?
+See **[AWS_SETUP.md](AWS_SETUP.md)** for complete instructions on:
+- Setting up a new AWS account
+- Creating IAM users and roles
+- Configuring credentials
+- Validating your setup
+
+### Node.js & Tools
+- Node.js 18+ (check with `node --version`)
+- AWS CDK CLI (install with `npm install -g aws-cdk`)
+- kubectl (install from [kubernetes.io](https://kubernetes.io/docs/tasks/tools/))
+- AWS CLI (install from [aws.amazon.com](https://aws.amazon.com/cli/))
+
+### Configure AWS Credentials
+
+**See [AWS_SETUP.md](AWS_SETUP.md) for detailed instructions.** Quick options:
+
+#### Option 1: AWS CLI Profile (Recommended)
 ```bash
 # Configure your AWS credentials
 aws configure --profile my-profile
@@ -188,7 +248,7 @@ export AWS_PROFILE=my-profile
 aws sts get-caller-identity
 ```
 
-### Option 2: Environment Variables
+#### Option 2: Environment Variables
 ```bash
 # Set account and region
 export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
@@ -200,7 +260,11 @@ aws sts get-caller-identity
 
 Once credentials are set, you're ready to deploy.
 
-## �🚀 Deployment
+## 🚀 Deployment Guide
+
+**See [DEPLOYMENT_CHECKLIST.md](infrastructure/DEPLOYMENT_CHECKLIST.md)** for detailed step-by-step instructions.
+
+### Quick Deployment
 
 To deploy the infrastructure to your AWS account:
 
@@ -215,7 +279,38 @@ ENVIRONMENT=staging npx cdk deploy --all
 ENVIRONMENT=prod npx cdk deploy --all --require-approval always
 ```
 
-## 🧹 Cleanup
+**What gets deployed:**
+- VPC with multi-AZ subnets and VPC endpoints
+- EKS cluster with managed node groups
+- S3 storage buckets
+- ArgoCD for GitOps (auto-deploys tenants and platform components)
+
+See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for what each component does.
+
+## 📋 CloudFormation Stacks Overview
+
+The CDK synthesizes 4 main CloudFormation stacks per environment:
+
+### Stack Breakdown
+
+| Stack | Purpose | Key Resources |
+|-------|---------|---|
+| **Network** | VPC foundation with multi-AZ setup | VPC, Subnets, NAT Gateways, VPC Endpoints, Flow Logs |
+| **EKS** | Kubernetes cluster with node groups | EKS Cluster, Node Groups, IRSA, ALB Controller, ArgoCD |
+| **Storage** | Secure S3 bucket configuration | S3 Bucket with encryption, versioning, lifecycle |
+| **GitOps** | Orchestration layer | ArgoCD bootstrap & App of Apps pattern |
+
+### Environment Differences
+
+| Resource | Dev | Staging | Prod |
+|----------|-----|---------|------|
+| **NAT Gateways** | 1 | 2 | 3 |
+| **Node Group Min/Max** | 2-6 | 3-10 | 6-20 |
+| **Instance Type** | t3.medium | t3.medium/large | t3.large/xlarge |
+| **Termination Protection** | No | No | Yes |
+| **S3 Lifecycle** | 90 days | 180 days | 365 days |
+
+See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for complete system architecture and component details.
 
 To destroy resources and stop incurring costs:
 
@@ -230,52 +325,64 @@ ENVIRONMENT=prod npx cdk destroy --all
 ```
 
 ---
-**Note**: This is a showcase repository. Please review all security groups and IAM permissions before deploying to a critical production environment.
 
-## 🔔 Troubleshooting
+## 📚 Learning Resources
 
-### CDK CLI Version Mismatch Warning
+### Understanding the Project
+- **[START_HERE.md](START_HERE.md)** - Navigation hub (5 min read) ⭐
+- **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** - Project overview (10 min read)
+- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** - System architecture & diagrams (15 min read)
 
-You may see a warning like:
+### Making Changes
+- **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** - Quick reference for file placement (bookmark this!)
+- **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** - Detailed structure documentation
+
+### Operations & Deployment
+- **[DEPLOYMENT_CHECKLIST.md](infrastructure/DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment guide
+- **[AWS_SETUP.md](AWS_SETUP.md)** - AWS account and credential setup
+- **[QUICK_REFERENCE.md](infrastructure/QUICK_REFERENCE.md)** - Common commands & operations
+
+### Repository Organization
+- **[STRUCTURE_COMPARISON.md](STRUCTURE_COMPARISON.md)** - Current vs. recommended structure
+- **[REORGANIZATION_GUIDE.md](REORGANIZATION_GUIDE.md)** - How to reorganize the repo (if needed)
+
+## 🔔 Troubleshooting & Support
+
+### Issue: "Where should I put this file?"
+→ See **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** for a decision flowchart and quick reference
+
+### Issue: "How should we organize this repository?"
+→ See **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** and **[STRUCTURE_COMPARISON.md](STRUCTURE_COMPARISON.md)**
+
+### Issue: "What's the system architecture?"
+→ See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for diagrams and component descriptions
+
+### Deployment Issues
+
+**CDK CLI Version Mismatch Warning**
+
+You may see:
 ```
 Cloud assembly schema version mismatch: Maximum schema version supported is 38.x.x, but found 48.0.0
 ```
 
-**What it means**: Your CDK CLI version is older than the aws-cdk-lib version in the project.
-
-**Impact**: ✅ **None** - Your `cdk synth` and deployments will work fine. This is just a version alignment warning.
-
-**To fix it** (optional):
+✅ **This is harmless** - Your deployments will work fine. To fix it (optional):
 ```bash
-# Update the CDK CLI to the latest version
 npm install -g aws-cdk@latest
-
-# Verify
 cdk --version
 ```
 
-After updating, re-run your commands and the warning will disappear.
+**CDK Notices (32775, 34892)**
 
-### CDK Notices (32775, 34892)
-
-You may see notices like:
-```
-32775   (cli): CLI versions and CDK library versions have diverged
-34892   CDK CLI will collect telemetry data on command usage starting at version 2.1100.0
-```
-
-**What they mean**: These are informational notices from AWS about upcoming changes and versioning updates.
-
-**Impact**: ✅ **None** - These don't affect your deployment. They're just FYI messages.
-
-**To suppress them**:
+You may see notices about CLI versions and telemetry. ✅ **These are informational only** and don't affect deployments. To suppress:
 ```bash
-# Acknowledge a specific notice by ID
-cdk acknowledge 32775
-cdk acknowledge 34892
-
-# Or suppress all notices
 cdk acknowledge 32775 34892
 ```
 
-The notices won't appear again once acknowledged.
+---
+
+## ⚠️ Important Notes
+
+- **Showcase Repository**: This is a production-ready showcase. Review all security groups and IAM permissions before deploying to a critical production environment.
+- **Cost**: EKS, NAT Gateways, and compute resources incur AWS charges. Use **[QUICK_REFERENCE.md](infrastructure/QUICK_REFERENCE.md)** for cost-saving tips.
+- **Termination Protection**: Production environment has termination protection enabled. See cleanup section for instructions.

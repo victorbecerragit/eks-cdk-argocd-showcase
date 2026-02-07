@@ -1,0 +1,320 @@
+---
+# Multi-Tenant Namespace Architecture
+# This file defines isolated namespace boundaries for different tenants/teams
+# Each namespace acts as a logical boundary with its own RBAC, quotas, and policies
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-alpha
+  labels:
+    tenant: alpha
+    environment: production
+    team: platform-alpha
+  annotations:
+    description: "Tenant Alpha - Production workloads"
+    owner: "platform-alpha-team"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-beta
+  labels:
+    tenant: beta
+    environment: production
+    team: platform-beta
+  annotations:
+    description: "Tenant Beta - Production workloads"
+    owner: "platform-beta-team"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-staging
+  labels:
+    tenant: staging
+    environment: staging
+    team: shared-staging
+  annotations:
+    description: "Shared Staging - Non-production testing"
+    owner: "shared-engineering-team"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-tools
+  labels:
+    tenant: infrastructure
+    environment: production
+    platform: core
+  annotations:
+    description: "Platform Infrastructure Tools - System components"
+    owner: "platform-engineering-team"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    tenant: infrastructure
+    environment: production
+    platform: observability
+  annotations:
+    description: "Observability Platform - Prometheus, Grafana, Loki"
+    owner: "platform-engineering-team"
+
+---
+# ResourceQuota for tenant-alpha
+# Enforces hard limits on compute, memory, and object count
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-alpha-quota
+  namespace: tenant-alpha
+spec:
+  hard:
+    requests.cpu: "100"
+    requests.memory: "200Gi"
+    limits.cpu: "200"
+    limits.memory: "400Gi"
+    pods: "500"
+    services: "50"
+    services.loadbalancers: "5"
+    services.nodeports: "10"
+    persistentvolumeclaims: "20"
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values: ["default", "standard"]
+
+---
+# ResourceQuota for tenant-beta
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-beta-quota
+  namespace: tenant-beta
+spec:
+  hard:
+    requests.cpu: "80"
+    requests.memory: "160Gi"
+    limits.cpu: "160"
+    limits.memory: "320Gi"
+    pods: "300"
+    services: "30"
+    services.loadbalancers: "3"
+    services.nodeports: "5"
+    persistentvolumeclaims: "15"
+
+---
+# ResourceQuota for staging
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-staging-quota
+  namespace: tenant-staging
+spec:
+  hard:
+    requests.cpu: "50"
+    requests.memory: "100Gi"
+    limits.cpu: "100"
+    limits.memory: "200Gi"
+    pods: "200"
+    services: "20"
+    services.loadbalancers: "2"
+
+---
+# LimitRange for tenant-alpha - Pod and Container constraints
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-alpha-limits
+  namespace: tenant-alpha
+spec:
+  limits:
+  # Pod limits
+  - max:
+      cpu: "4"
+      memory: "8Gi"
+    min:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Pod
+  # Container limits
+  - max:
+      cpu: "4"
+      memory: "8Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "250m"
+      memory: "256Mi"
+    type: Container
+  # PVC limits
+  - max:
+      storage: "100Gi"
+    min:
+      storage: "1Gi"
+    type: PersistentVolumeClaim
+
+---
+# LimitRange for tenant-beta
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-beta-limits
+  namespace: tenant-beta
+spec:
+  limits:
+  - max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Pod
+  - max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "250m"
+      memory: "256Mi"
+    type: Container
+  - max:
+      storage: "50Gi"
+    min:
+      storage: "1Gi"
+    type: PersistentVolumeClaim
+
+---
+# NetworkPolicy for tenant-alpha - Egress and Ingress control
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tenant-alpha-default-deny
+  namespace: tenant-alpha
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic within same namespace
+  - from:
+    - podSelector: {}
+  # Allow from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow traffic within namespace
+  - to:
+    - podSelector: {}
+  # Allow external HTTPS (controlled)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# NetworkPolicy for tenant-beta
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tenant-beta-default-deny
+  namespace: tenant-beta
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  - to:
+    - podSelector: {}
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Allow metrics scraping from observability namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: tenant-alpha
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: observability
+    ports:
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: tenant-beta
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: observability
+    ports:
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 8080

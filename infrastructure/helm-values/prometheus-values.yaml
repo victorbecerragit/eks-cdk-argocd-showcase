@@ -1,0 +1,178 @@
+---
+# Prometheus Helm Chart Values
+# Community maintained prometheus-community/kube-prometheus-stack
+
+# Configure Prometheus Operator
+prometheusOperator:
+  enabled: true
+  manageResources: true
+
+# Prometheus Configuration
+prometheus:
+  enabled: true
+  
+  # ServiceMonitor for scraping metrics
+  serviceMonitorSelectorNilUsesHelmValues: false
+  
+  prometheusSpec:
+    # Resources
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+    
+    # Storage
+    retention: 15d
+    retentionSize: "50GB"
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    
+    # High Availability
+    replicas: 2
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - prometheus
+            topologyKey: kubernetes.io/hostname
+    
+    # Scrape configurations
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    
+    # External Labels for multi-cluster setup
+    externalLabels:
+      cluster: "eks-primary"
+      environment: "production"
+    
+    # Additional scrape configs for Pod metrics
+    additionalScrapeConfigs: []
+
+# Grafana Configuration
+grafana:
+  enabled: true
+  
+  # Admin credentials (use secrets in production)
+  adminPassword: "changeme"
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Persistence
+  persistence:
+    enabled: true
+    storageClassName: gp2
+    size: 10Gi
+  
+  # Data sources
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-operated:9090
+        access: proxy
+        isDefault: true
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+  
+  # Dashboards
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+  
+  # Pre-configured dashboards
+  dashboards:
+    default:
+      kubernetes-cluster:
+        url: https://grafana.com/api/dashboards/7249/revisions/1/download
+      kubernetes-pods:
+        url: https://grafana.com/api/dashboards/6417/revisions/1/download
+
+# Alertmanager Configuration
+alertmanager:
+  enabled: true
+  
+  config:
+    global:
+      resolve_timeout: 5m
+    
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'default'
+      routes:
+      - match:
+          severity: critical
+        receiver: critical
+        continue: true
+      - match:
+          severity: warning
+        receiver: warning
+    
+    receivers:
+    - name: 'default'
+      # Add webhook, email, PagerDuty configs here
+    - name: 'critical'
+      # Critical alerts configuration
+    - name: 'warning'
+      # Warning alerts configuration
+
+# Node Exporter
+nodeExporter:
+  enabled: true
+
+# kube-state-metrics
+kubeStateMetrics:
+  enabled: true
+
+# Prometheus Node Exporter - DaemonSet
+prometheus-node-exporter:
+  hostRootFsMount: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 30Mi
+    limits:
+      cpu: 200m
+      memory: 64Mi
+
+# ServiceMonitor for Prometheus itself
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s

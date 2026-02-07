@@ -1,0 +1,105 @@
+---
+# Loki Helm Chart Values for Log Aggregation
+# prometheus-community/loki-stack
+
+loki:
+  enabled: true
+  
+  # Authentication
+  auth_enabled: false
+  
+  # Ingester configuration
+  ingester:
+    chunk_idle_period: 3m
+    chunk_retain_period: 1m
+    max_chunk_age: 2h
+    max_streams_per_user: 10000
+    chunk_encoding: snappy
+  
+  # Limits configuration
+  limits_config:
+    enforce_metric_name: false
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_cache_freshness_per_query: 10m
+    split_queries_by_interval: 24h
+  
+  # Persistence
+  persistence:
+    enabled: true
+    storageClassName: gp2
+    size: 50Gi
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # High Availability
+  replicas: 3
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - loki
+          topologyKey: kubernetes.io/hostname
+
+# Promtail - Log shipper to Loki
+promtail:
+  enabled: true
+  
+  # Configuration
+  config:
+    clients:
+    - url: http://loki:3100/loki/api/v1/push
+    
+    scrape_configs:
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod_name
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+      - source_labels: [__meta_kubernetes_pod_label_version]
+        target_label: version
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  
+  # Run as DaemonSet on all nodes
+  daemonset:
+    enabled: true
+
+# Grafana Loki datasource plugin
+grafana-loki:
+  enabled: true
+
+# Log volume mounts
+volumeMounts:
+  - name: varlog
+    mountPath: /var/log
+
+volumes:
+  - name: varlog
+    hostPath:
+      path: /var/log

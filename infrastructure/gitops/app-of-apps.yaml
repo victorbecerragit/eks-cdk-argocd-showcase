@@ -1,0 +1,173 @@
+---
+# App of Apps - Root Application
+# This orchestrates all infrastructure and tenant applications
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps-root
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+    targetRevision: HEAD
+    path: infrastructure/gitops
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+    - CreateNamespace=true
+
+---
+# Environment: PRODUCTION (App-of-Apps pattern)
+# Only includes stable, tested applications
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: production
+  namespace: argocd
+spec:
+  sourceRepos:
+  - 'https://github.com/your-org/eks-cdk-argocd-showcase.git'
+  - 'https://prometheus-community.github.io/helm-charts'
+  - 'https://grafana.github.io/helm-charts'
+  - 'https://argoproj.github.io/argo-helm'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  - namespace: 'argocd'
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  namespaceResourceBlacklist:
+  - group: ''
+    kind: ResourceQuota
+  - group: ''
+    kind: LimitRange
+
+---
+# Environment: STAGING (Canary testing)
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: staging
+  namespace: argocd
+spec:
+  sourceRepos:
+  - 'https://github.com/your-org/eks-cdk-argocd-showcase.git'
+  - 'https://prometheus-community.github.io/helm-charts'
+  - 'https://grafana.github.io/helm-charts'
+  destinations:
+  - namespace: 'tenant-staging'
+    server: https://kubernetes.default.svc
+  - namespace: 'observability'
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+
+---
+# Application Set for multi-tenant deployment
+# Dynamically creates applications for each tenant
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tenant-deployments
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      - tenant: alpha
+        namespace: tenant-alpha
+        project: production
+      - tenant: beta
+        namespace: tenant-beta
+        project: production
+      - tenant: staging
+        namespace: tenant-staging
+        project: staging
+  
+  template:
+    metadata:
+      name: 'tenant-{{ tenant }}'
+      namespace: argocd
+      finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: '{{ project }}'
+      
+      source:
+        repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+        targetRevision: HEAD
+        path: 'gitops/argocd/applications/tenant-{{ tenant }}'
+      
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ namespace }}'
+      
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+
+---
+# Progressive Delivery with Argo Rollouts (Optional)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: production
+  
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: "2.32.0"
+    helm:
+      releaseName: argo-rollouts
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

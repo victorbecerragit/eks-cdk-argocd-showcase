@@ -1,0 +1,294 @@
+---
+# ArgoCD Application for Multi-Tenancy Setup
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: multi-tenancy
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+    targetRevision: HEAD
+    path: infrastructure/multi-tenancy
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ArgoCD Application for Security Policies
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: security-policies
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+    targetRevision: HEAD
+    path: infrastructure/security
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ArgoCD Application for Prometheus/Observability Helm Chart
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-stack
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "54.0.0"
+    helm:
+      releaseName: prometheus
+      values: |
+        # Values from values file will be merged
+        prometheusOperator:
+          enabled: true
+        
+        prometheus:
+          enabled: true
+          prometheusSpec:
+            retention: 15d
+            retentionSize: "50GB"
+            replicas: 2
+            resources:
+              requests:
+                cpu: 500m
+                memory: 2Gi
+              limits:
+                cpu: 1000m
+                memory: 4Gi
+        
+        grafana:
+          enabled: true
+          adminPassword: changeme
+          persistence:
+            enabled: true
+            size: 10Gi
+        
+        alertmanager:
+          enabled: true
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 5m
+
+---
+# ArgoCD Application for Loki Stack (Logging)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki-stack
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki-stack
+    targetRevision: "2.9.0"
+    helm:
+      releaseName: loki
+      values: |
+        loki:
+          enabled: true
+          persistence:
+            enabled: true
+            size: 50Gi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        
+        promtail:
+          enabled: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 5m
+
+---
+# ArgoCD Application for Observability stack manifests
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-setup
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+    targetRevision: HEAD
+    path: infrastructure/observability
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    # ServiceMonitor CRDs should be applied first
+    - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ArgoCD Application for Demo Tenant Alpha
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tenant-alpha
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+    targetRevision: HEAD
+    path: gitops/argocd/applications/tenant-alpha
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-alpha
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ArgoCD Application for Demo Tenant Beta
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tenant-beta
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/your-org/eks-cdk-argocd-showcase.git
+    targetRevision: HEAD
+    path: gitops/argocd/applications/tenant-beta
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-beta
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
