@@ -6,7 +6,7 @@ A production-ready Infrastructure as Code (IaC) showcase demonstrating how to bu
 
 ## 📖 **Quick Start - Read This First!**
 
-**New to this project?** → Start with [START_HERE.md](START_HERE.md) ⭐
+**New to this project?** → Start with [START_HERE.md](docs/START_HERE.md) ⭐
 - Navigation hub for all documentation
 - Guides for different roles (developers, architects, DevOps)
 - Links to comprehensive guides below
@@ -17,29 +17,29 @@ A production-ready Infrastructure as Code (IaC) showcase demonstrating how to bu
 ## 📚 **Documentation Guides** (Pick Your Path)
 
 ### 🎯 I'm a **Project Lead/Decision Maker**
-- **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** (10 min) - Problem analysis & solution overview
-- **[STRUCTURE_COMPARISON.md](STRUCTURE_COMPARISON.md)** (20 min) - Current vs. proposed structure analysis
+- **[EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md)** (10 min) - Problem analysis & solution overview
+- **[STRUCTURE_COMPARISON.md](docs/STRUCTURE_COMPARISON.md)** (20 min) - Current vs. proposed structure analysis
 - **Use for**: Understanding the project organization and making architectural decisions
 
 ### 🏗️ I'm an **Architect/Technical Lead**
-- **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** (15 min) - Detailed structure proposal
-- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (15 min) - System topology & diagrams
+- **[REPOSITORY_STRUCTURE_GUIDE.md](docs/REPOSITORY_STRUCTURE_GUIDE.md)** (15 min) - Detailed structure proposal
+- **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** (15 min) - System topology & diagrams
 - **Use for**: Understanding system design and technical details
 
 ### 👨‍💻 I'm a **Developer** (Adding Code)
-- **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** (10 min) - **Bookmark this!** Quick decision guide
-- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (15 min) - Understand the system
+- **[WHERE_DOES_IT_GO.md](docs/WHERE_DOES_IT_GO.md)** (10 min) - **Bookmark this!** Quick decision guide
+- **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** (15 min) - Understand the system
 - **Use for**: Daily reference on where to put files and how components work
 
 ### 🔧 I'm a **DevOps/Platform Engineer**
-- **[REORGANIZATION_GUIDE.md](REORGANIZATION_GUIDE.md)** (40 min) - Step-by-step implementation guide
-- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (15 min) - System architecture reference
+- **[docs/REORGANIZATION_GUIDE.md](docs/REORGANIZATION_GUIDE.md)** (40 min) - Step-by-step implementation guide
+- **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** (15 min) - System architecture reference
 - **Use for**: Implementing changes and deployment automation
 
 ### 🆕 I'm a **New Team Member**
-1. Read **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** - Understand the system
-2. Read **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** - Learn where things go
-3. Bookmark **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** - Reference for daily work
+1. Read **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** - Understand the system
+2. Read **[WHERE_DOES_IT_GO.md](docs/WHERE_DOES_IT_GO.md)** - Learn where things go
+3. Bookmark **[WHERE_DOES_IT_GO.md](docs/WHERE_DOES_IT_GO.md)** - Reference for daily work
 
 ---
 
@@ -69,24 +69,30 @@ This project implements a complete Kubernetes platform on AWS, following best pr
 
 ## 🛠 Project Structure
 
-### Current Structure (See [REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md) for detailed documentation)
+### Current Structure (Clear Separation of Concerns)
+
+See [REPOSITORY_STRUCTURE_GUIDE.md](docs/REPOSITORY_STRUCTURE_GUIDE.md) for detailed documentation:
 
 ```
-├── bin/                     # CDK App entry point & Stack orchestration
-├── lib/
-│   ├── config/              # Environment configurations (dev/stage/prod)
-│   ├── constructs/          # Reusable L3 CDK constructs
-│   └── stacks/              # CloudFormation Stacks
-├── infrastructure/          # Kubernetes multi-tenancy, security & observability configs
-├── gitops/                  # ArgoCD manifests, Helm charts & applications
-├── scripts/                 # Helper scripts for templates & commands
-├── test/                    # Unit tests
-└── docs/                    # Project documentation & architecture guides
+├── iac/                     # AWS Infrastructure as Code (CDK)
+│   ├── bin/                 # CDK App entry point & Stack orchestration
+│   ├── lib/                 # Constructs, stacks, and configurations
+│   ├── test/                # Unit tests
+│   └── assets/              # CDK assets
+├── platform/                # Kubernetes Configuration - All cluster configs
+│   ├── tenants/             # Multi-tenant isolation & quotas
+│   ├── security/            # Security policies & controls
+│   ├── observability/       # Monitoring & logging stack
+│   └── gitops/              # ArgoCD orchestration
+├── helm-charts/             # Reusable Helm charts
+├── docs/                    # All documentation
+├── scripts/                 # Helper scripts
+└── package.json             # Root delegation to /iac/
 ```
 
-### Recommended Structure (For better clarity)
+### Structure Benefits
 
-See **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** for migration guide:
+See **[REPOSITORY_STRUCTURE_GUIDE.md](docs/REPOSITORY_STRUCTURE_GUIDE.md)** for detailed explanation:
 
 ```
 ├── iac/                     # AWS Infrastructure (CDK) - All AWS provisioning code
@@ -109,13 +115,13 @@ See **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** for migra
 
 ## ⚙️ Configuration
 
-Configurations are centrally managed in `lib/config/`. The system uses strict typing and validation to prevent misconfigurations before deployment.
+Configurations are centrally managed in `iac/lib/config/`. The system uses strict typing and validation to prevent misconfigurations before deployment.
 
 *   **Dev**: Cost-optimized (Spot instances, fewer replicas, single NAT Gateway).
 *   **Staging**: HA testing (Multi-AZ, mixed instances).
 *   **Prod**: High Availability, Security hardening, Compliance (termination protection, full logging).
 
-See [lib/config/README.md](lib/config/README.md) for detailed configuration documentation and [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) for system architecture diagrams.
+See [iac/lib/config/README.md](iac/lib/config/README.md) for detailed configuration documentation and [ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md) for system architecture diagrams.
 
 ## 🧪 Testing & Validation
 
@@ -153,7 +159,7 @@ npx cdk synth -c environment=staging
 npx cdk synth -c environment=prod
 ```
 
-See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for what each stack creates.
+See **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** for what each stack creates.
 
 ## 📋 CloudFormation Templates Overview
 
@@ -262,7 +268,7 @@ Once credentials are set, you're ready to deploy.
 
 ## 🚀 Deployment Guide
 
-**See [DEPLOYMENT_CHECKLIST.md](infrastructure/DEPLOYMENT_CHECKLIST.md)** for detailed step-by-step instructions.
+**See [DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)** for detailed step-by-step instructions.
 
 ### Quick Deployment
 
@@ -285,7 +291,7 @@ ENVIRONMENT=prod npx cdk deploy --all --require-approval always
 - S3 storage buckets
 - ArgoCD for GitOps (auto-deploys tenants and platform components)
 
-See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for what each component does.
+See **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** for what each component does.
 
 ## 📋 CloudFormation Stacks Overview
 
@@ -310,7 +316,7 @@ The CDK synthesizes 4 main CloudFormation stacks per environment:
 | **Termination Protection** | No | No | Yes |
 | **S3 Lifecycle** | 90 days | 180 days | 365 days |
 
-See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for complete system architecture and component details.
+See **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** for complete system architecture and component details.
 
 To destroy resources and stop incurring costs:
 
@@ -329,33 +335,33 @@ ENVIRONMENT=prod npx cdk destroy --all
 ## 📚 Learning Resources
 
 ### Understanding the Project
-- **[START_HERE.md](START_HERE.md)** - Navigation hub (5 min read) ⭐
-- **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** - Project overview (10 min read)
-- **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** - System architecture & diagrams (15 min read)
+- **[START_HERE.md](docs/START_HERE.md)** - Navigation hub (5 min read) ⭐
+- **[EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md)** - Project overview (10 min read)
+- **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** - System architecture & diagrams (15 min read)
 
 ### Making Changes
-- **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** - Quick reference for file placement (bookmark this!)
-- **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** - Detailed structure documentation
+- **[WHERE_DOES_IT_GO.md](docs/WHERE_DOES_IT_GO.md)** - Quick reference for file placement (bookmark this!)
+- **[REPOSITORY_STRUCTURE_GUIDE.md](docs/REPOSITORY_STRUCTURE_GUIDE.md)** - Detailed structure documentation
 
 ### Operations & Deployment
-- **[DEPLOYMENT_CHECKLIST.md](infrastructure/DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment guide
+- **[DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment guide
 - **[AWS_SETUP.md](AWS_SETUP.md)** - AWS account and credential setup
-- **[QUICK_REFERENCE.md](infrastructure/QUICK_REFERENCE.md)** - Common commands & operations
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Common commands & operations
 
 ### Repository Organization
-- **[STRUCTURE_COMPARISON.md](STRUCTURE_COMPARISON.md)** - Current vs. recommended structure
-- **[REORGANIZATION_GUIDE.md](REORGANIZATION_GUIDE.md)** - How to reorganize the repo (if needed)
+- **[STRUCTURE_COMPARISON.md](docs/STRUCTURE_COMPARISON.md)** - Current vs. new structure details
+- **[PLATFORM.md](docs/PLATFORM.md)** - Kubernetes platform configuration guide
 
 ## 🔔 Troubleshooting & Support
 
 ### Issue: "Where should I put this file?"
-→ See **[WHERE_DOES_IT_GO.md](WHERE_DOES_IT_GO.md)** for a decision flowchart and quick reference
+→ See **[WHERE_DOES_IT_GO.md](docs/WHERE_DOES_IT_GO.md)** for a decision flowchart and quick reference
 
 ### Issue: "How should we organize this repository?"
-→ See **[REPOSITORY_STRUCTURE_GUIDE.md](REPOSITORY_STRUCTURE_GUIDE.md)** and **[STRUCTURE_COMPARISON.md](STRUCTURE_COMPARISON.md)**
+→ See **[REPOSITORY_STRUCTURE_GUIDE.md](docs/REPOSITORY_STRUCTURE_GUIDE.md)** and **[STRUCTURE_COMPARISON.md](docs/STRUCTURE_COMPARISON.md)**
 
 ### Issue: "What's the system architecture?"
-→ See **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** for diagrams and component descriptions
+→ See **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** for diagrams and component descriptions
 
 ### Deployment Issues
 
@@ -384,5 +390,5 @@ cdk acknowledge 32775 34892
 ## ⚠️ Important Notes
 
 - **Showcase Repository**: This is a production-ready showcase. Review all security groups and IAM permissions before deploying to a critical production environment.
-- **Cost**: EKS, NAT Gateways, and compute resources incur AWS charges. Use **[QUICK_REFERENCE.md](infrastructure/QUICK_REFERENCE.md)** for cost-saving tips.
+- **Cost**: EKS, NAT Gateways, and compute resources incur AWS charges. Use **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** for cost-saving tips.
 - **Termination Protection**: Production environment has termination protection enabled. See cleanup section for instructions.
