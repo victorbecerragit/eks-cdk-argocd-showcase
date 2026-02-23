@@ -9,7 +9,7 @@ updates:
     rebase-strategy: "auto"
     open-pull-requests-limit: 5
     assignees:
-      - "victorbecerra"
+      - "victorbecerragit"
     allow:
       - dependency-type: "direct"
     # Group updates by type for better review workflow
@@ -33,7 +33,7 @@ updates:
     rebase-strategy: "auto"
     open-pull-requests-limit: 5
     assignees:
-      - "victorbecerra"
+      - "victorbecerragit"
     allow:
       - dependency-type: "direct"
     labels:
@@ -48,7 +48,7 @@ updates:
 # - Rebase strategy set to auto for clean commit history
 # - Max 5 concurrent PRs to avoid notification noise
 # - All PRs automatically tested via GitHub Actions workflow
-# - Updates assigned to victorbecerra for review
+# - Updates assigned to victorbecerragit for review
 #
 # Groups strategy:
 # - cdk-libraries: AWS CDK core packages that should be updated together
