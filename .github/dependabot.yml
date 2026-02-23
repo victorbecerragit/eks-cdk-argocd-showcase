@@ -17,8 +17,7 @@ updates:
       cdk-libraries:
         patterns: ["aws-cdk-lib", "@aws-cdk/*", "constructs"]
       dev-dependencies:
-        dependency-types:
-          - "development"
+        patterns: ["jest*", "ts-node", "typescript", "@types/*", "ts-jest"]
       other-dependencies:
         patterns: ["*"]
     labels:
