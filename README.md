@@ -293,6 +293,70 @@ ENVIRONMENT=prod npx cdk deploy --all --require-approval always
 
 See **[ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)** for what each component does.
 
+## 🔄 CI/CD with GitHub Actions
+
+This project includes automated GitHub Actions workflow (`.github/workflows/cdk-deploy.yaml`) that:
+- ✅ Installs dependencies
+- ✅ Compiles TypeScript
+- ✅ Runs unit tests
+- ✅ Synthesizes CloudFormation templates (validates infrastructure code)
+
+**Note:** The synthesis step does NOT require real AWS credentials—it uses dummy values for validation.
+
+### Setting Up Real AWS Deployment (Optional)
+
+To enable actual AWS deployment from GitHub Actions, add the `AWS_ACCOUNT_ID` secret:
+
+#### Adding the Secret to GitHub
+
+1. Go to your repository → **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret**
+3. Name: `AWS_ACCOUNT_ID`
+4. Value: Your AWS account ID (e.g., `123456789012`)
+   - Get it with: `aws sts get-caller-identity --query Account --output text`
+5. Click **Add secret**
+
+#### How It Works
+
+The workflow automatically uses your real account ID if the secret exists, otherwise it defaults to a dummy value for CI/CD validation.
+
+### Understanding How CDK Finds Configuration Variables
+
+When you run CDK synthesis, the configuration variables are resolved through this chain:
+
+```
+GitHub Actions Workflow
+         ↓
+Environment Variables: CDK_DEFAULT_ACCOUNT, CDK_DEFAULT_REGION
+         ↓
+iac/cdk.json
+    { "app": "npx ts-node bin/app.ts" }
+         ↓
+iac/bin/app.ts
+    - Calls: getConfig(environment)
+    - Imports from: iac/lib/config/index.ts
+         ↓
+iac/lib/config/index.ts (Config Loader)
+    - Routes to: dev.ts, staging.ts, or prod.ts
+         ↓
+iac/lib/config/dev.ts (and staging.ts, prod.ts)
+    - Reads: process.env.CDK_DEFAULT_ACCOUNT
+    - Reads: process.env.CDK_DEFAULT_REGION
+         ↓
+iac/bin/app.ts (back to validation)
+    - Validates: account & region are set
+    - Throws error if missing
+         ↓
+✅ CloudFormation Templates Generated
+```
+
+**Key Files Involved:**
+1. **`.github/workflows/cdk-deploy.yaml`** - Sets environment variables
+2. **`iac/cdk.json`** - Tells CDK which TypeScript file to run
+3. **`iac/bin/app.ts`** - Entry point that loads config and validates
+4. **`iac/lib/config/index.ts`** - Routes to correct environment config
+5. **`iac/lib/config/{dev,staging,prod}.ts`** - Actual configuration with env var reads
+
 ## 📋 CloudFormation Stacks Overview
 
 The CDK synthesizes 4 main CloudFormation stacks per environment:
