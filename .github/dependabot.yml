@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # Monitor npm packages in /iac directory (main CDK code)
+  - package-ecosystem: "npm"
+    directory: "/iac"
+    schedule:
+      interval: "weekly"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    assignees:
+      - "victorbecerra"
+    allow:
+      - dependency-type: "direct"
+    # Group updates by type for better review workflow
+    groups:
+      cdk-libraries:
+        patterns: ["aws-cdk-lib", "@aws-cdk/*", "constructs"]
+      dev-dependencies:
+        dependency-types:
+          - "development"
+      other-dependencies:
+        patterns: ["*"]
+    labels:
+      - "dependencies"
+      - "automated"
+
+  # Monitor GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    assignees:
+      - "victorbecerra"
+    allow:
+      - dependency-type: "direct"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "github-actions"
+
+# Configuration notes:
+# - npm updates scoped to /iac directory (where package.json exists)
+# - GitHub Actions workflows monitored at repository root
+# - CDK libraries grouped separately for easier review
+# - Rebase strategy set to auto for clean commit history
+# - Max 5 concurrent PRs to avoid notification noise
+# - All PRs automatically tested via GitHub Actions workflow
+# - Updates assigned to victorbecerra for review
+#
+# Groups strategy:
+# - cdk-libraries: AWS CDK core packages that should be updated together
+# - dev-dependencies: Development tools (ts-node, jest, etc.)
+# - other-dependencies: Any other production dependencies
