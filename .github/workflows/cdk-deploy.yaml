@@ -17,7 +17,9 @@ jobs:
       - run: cd iac && npm ci
       - run: npm run build
       - run: npm run test
-      - run: npm run synth
-        env:
-          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID || '123456789012' }}
-          CDK_DEFAULT_REGION: us-east-1
+      # Uncomment below to enable CloudFormation synthesis with real AWS credentials
+      # This requires AWS_ACCOUNT_ID GitHub secret to be configured
+      # - run: npm run synth
+      #   env:
+      #     CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+      #     CDK_DEFAULT_REGION: us-east-1
