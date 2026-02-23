@@ -1,5 +1,13 @@
 # AWS EKS CDK & ArgoCD Showcase
 
+[![Build Status](https://github.com/victorbecerra/eks-cdk-argocd-showcase/workflows/CDK%20Deploy/badge.svg)](https://github.com/victorbecerra/eks-cdk-argocd-showcase/actions)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![AWS CDK](https://img.shields.io/badge/AWS%20CDK-2.237-FF9900?logo=amazonaws)](https://aws.amazon.com/cdk/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-brightgreen?logo=node.js)](https://nodejs.org/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.31-326CE5?logo=kubernetes)](https://kubernetes.io/)
+[![ArgoCD](https://img.shields.io/badge/ArgoCD-7.7.10-EF7B4D?logo=argo)](https://argoproj.github.io/cd/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
 A production-ready Infrastructure as Code (IaC) showcase demonstrating how to build, manage, and scale Amazon EKS clusters using AWS CDK and GitOps principles with ArgoCD.
 
 ---
