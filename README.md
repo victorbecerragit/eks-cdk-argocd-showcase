@@ -1,6 +1,6 @@
 # AWS EKS CDK & ArgoCD Showcase
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/victorbecerra/eks-cdk-argocd-showcase/cdk-deploy.yaml?branch=main&logo=github)](https://github.com/victorbecerra/eks-cdk-argocd-showcase/actions/workflows/cdk-deploy.yaml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/victorbecerragit/eks-cdk-argocd-showcase/cdk-deploy.yaml?branch=main&logo=github)](https://github.com/victorbecerragit/eks-cdk-argocd-showcase/actions/workflows/cdk-deploy.yaml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![AWS CDK](https://img.shields.io/badge/AWS%20CDK-2.237-FF9900?logo=amazonaws)](https://aws.amazon.com/cdk/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-brightgreen?logo=node.js)](https://nodejs.org/)
